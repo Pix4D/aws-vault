@@ -1,23 +1,29 @@
 #compdef aws-vault
 
 _aws-vault() {
-    local i
-    for (( i=2; i < CURRENT; i++ )); do
-        if [[ ${words[i]} == -- ]]; then
-            shift $i words
-            (( CURRENT -= i ))
-            _normal
-            return
-        fi
-    done
+	_arguments -C \
+		'1: :->command' \
+		'2: :->profiles'
 
-    local matches=($(${words[1]} --completion-bash ${(@)words[2,$CURRENT]}))
-    compadd -a matches
+	case $state in
+		command)
+			local -a commands=( $(${words[1]} --completion-bash) )
+			_describe -t commands 'Commands' commands
 
-    if [[ $compstate[nmatches] -eq 0 && $words[$CURRENT] != -* ]]; then
-        _files
-    fi
+			;;
+		profiles)
+			case "${words[2]}" in
+				exec|login|remove|rm|rotate)
+					local -a profiles=(  $(cat ~/.aws/config | awk '/^\[profile/ {print $2;}' | tr -d \])  )
+					_describe -t profiles 'AWS Profiles' profiles
+					;;
+			esac
+			;;
+		args)
+			_describe -t args 'Args' args
+	esac
 }
+
 
 if [[ "$(basename -- ${(%):-%x})" != "_aws-vault" ]]; then
     compdef _aws-vault aws-vault

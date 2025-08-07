@@ -16,7 +16,7 @@ set -euo pipefail
 
 BIN_PATH="$1"
 DMG_PATH="${2:-$1.dmg}"
-CERT_ID="${CERT_ID:-"Developer ID Application: 99designs Inc (NRM9HVJ62Z)"}"
+CERT_ID="${CERT_ID:-"Developer ID Application: ByteNess Inc (R)"}"
 KEYCHAIN_PROFILE="${KEYCHAIN_PROFILE:-AC_PASSWORD}"
 
 if [[ -f "$DMG_PATH" ]] ; then

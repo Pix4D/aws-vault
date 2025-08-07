@@ -5,8 +5,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/99designs/aws-vault/v7/server"
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/byteness/aws-vault/v7/server"
 )
 
 func ConfigureProxyCommand(app *kingpin.Application) {

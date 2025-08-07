@@ -13,6 +13,7 @@ var alreadyRegisteredLocalised = []string{
 	"The object already exists",
 	"Das Objekt ist bereits vorhanden",
 	"El objeto ya existe",
+	"Objektet findes allerede",
 }
 
 var runAsAdministratorLocalised = []string{
@@ -20,6 +21,8 @@ var runAsAdministratorLocalised = []string{
 	// truncate before 'Umlaut' to avoid encoding problems coming from Windows cmd
 	"Als Administrator ausf",
 	"Ejecutar como administrador",
+	//  truncate before 'ø' to avoid encoding problems coming from Windows cmd
+	"r som administrator",
 }
 
 func msgFound(localised []string, toTest string) bool {

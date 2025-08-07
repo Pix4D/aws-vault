@@ -1,7 +1,11 @@
 # AWS Vault
 
-[![Downloads](https://img.shields.io/github/downloads/99designs/aws-vault/total.svg)](https://github.com/99designs/aws-vault/releases)
-[![Continuous Integration](https://github.com/99designs/aws-vault/workflows/Continuous%20Integration/badge.svg)](https://github.com/99designs/aws-vault/actions)
+[![Downloads](https://img.shields.io/github/downloads/byteness/aws-vault/total)](https://github.com/byteness/aws-vault/releases)
+[![Continuous Integration](https://github.com/byteness/aws-vault/workflows/Continuous%20Integration/badge.svg)](https://github.com/byteness/aws-vault/actions)
+
+> [!NOTE]
+> This is a maintained fork of https://github.com/99designs/aws-vault which seems to be an abandoned project.
+> Contributions are welcome, but keep in mind this is a side project and maintained on best effort basis!
 
 AWS Vault is a tool to securely store and access AWS credentials in a development environment.
 
@@ -12,18 +16,9 @@ Check out the [announcement blog post](https://99designs.com.au/tech-blog/blog/2
 ## Installing
 
 You can install AWS Vault:
-- by downloading the [latest release](https://github.com/99designs/aws-vault/releases/latest)
-- on macOS with [Homebrew Cask](https://formulae.brew.sh/cask/aws-vault): `brew install --cask aws-vault`
-- on macOS with [MacPorts](https://ports.macports.org/port/aws-vault/summary): `port install aws-vault`
-- on Windows with [Chocolatey](https://chocolatey.org/packages/aws-vault): `choco install aws-vault`
-- on Windows with [Scoop](https://scoop.sh/): `scoop install aws-vault`
-- on Linux with [Homebrew on Linux](https://formulae.brew.sh/formula/aws-vault): `brew install aws-vault`
-- on [Arch Linux](https://www.archlinux.org/packages/community/x86_64/aws-vault/): `pacman -S aws-vault`
-- on [Gentoo Linux](https://github.com/gentoo/guru/tree/master/app-admin/aws-vault): `emerge --ask app-admin/aws-vault` ([enable Guru first](https://wiki.gentoo.org/wiki/Project:GURU/Information_for_End_Users))
-- on [FreeBSD](https://www.freshports.org/security/aws-vault/): `pkg install aws-vault`
-- on [OpenSUSE](https://software.opensuse.org/package/aws-vault): enable devel:languages:go repo then `zypper install aws-vault`
-- with [Nix](https://search.nixos.org/packages?show=aws-vault&query=aws-vault): `nix-env -i aws-vault`
-- with [asdf-vm](https://github.com/karancode/asdf-aws-vault): `asdf plugin-add aws-vault https://github.com/karancode/asdf-aws-vault.git && asdf install aws-vault <version>`
+- by downloading the [latest release](https://github.com/byteness/aws-vault/releases/latest)
+- using [Homebrew](https://formulae.brew.sh/formula/aws-vault): `brew install aws-vault`
+- on Windows with [Chocolatey](https://chocolatey.org/packages/aws-vault): `choco install aws-vault` ([repo](https://github.com/gusztavvargadr/aws-vault-chocolatey) by [Gusztáv Varga](https://github.com/gusztavvargadr))
 
 ## Documentation
 
@@ -148,9 +143,15 @@ Here's what you can expect from aws-vault
 | `aws-vault exec bar-role2`               | session-token + role + role | session-token | Yes |
 | `aws-vault exec bar-role2 --no-session`  | role + role                 | role          | Yes |
 
+## Auto-logout
+
+Since v7.3+ `aws-vault` introduced option to automatically try and do a logout first, before login when executing `aws-vault login <profile>`.
+
+This behavour can be achieved by using `--auto-logout` or `-a` flag! Read more in [USAGE.md](./USAGE.md) file.
+
 ## Development
 
-The [macOS release builds](https://github.com/99designs/aws-vault/releases) are code-signed to avoid extra prompts in Keychain. You can verify this with:
+The [macOS release builds](https://github.com/byteness/aws-vault/releases) are code-signed to avoid extra prompts in Keychain. You can verify this with:
 ```shell
 $ codesign --verify --verbose $(which aws-vault)
 ```
@@ -160,6 +161,18 @@ If you are developing or compiling the aws-vault binary yourself, you can [gener
 $ go build .
 $ codesign --sign <Name of certificate created above> ./aws-vault
 ```
+
+## 🧰 Contributing
+
+Report issues/questions/feature requests on in the [issues](https://github.com/byteness/aws-vault/issues/new) section.
+
+Full contributing [guidelines are covered here](.github/CONTRIBUTING.md).
+
+## Maintainers
+
+* [Marko Bevc](https://github.com/mbevc1)
+* Full [contributors list](https://github.com/byteness/aws-vault/graphs/contributors)
+
 
 ## References and Inspiration
 

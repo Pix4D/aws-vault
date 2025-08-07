@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/99designs/aws-vault/v7/cli"
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/byteness/aws-vault/v7/cli"
 )
 
 // Version is provided at compile time

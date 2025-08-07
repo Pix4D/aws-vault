@@ -7,10 +7,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/99designs/aws-vault/v7/prompt"
-	"github.com/99designs/aws-vault/v7/vault"
-	"github.com/99designs/keyring"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/byteness/aws-vault/v7/prompt"
+	"github.com/byteness/aws-vault/v7/vault"
+	"github.com/byteness/keyring"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	isatty "github.com/mattn/go-isatty"
 	"golang.org/x/term"
 )
@@ -186,4 +189,59 @@ func fileKeyringPassphrasePrompt(prompt string) (string, error) {
 	}
 	fmt.Println()
 	return string(b), nil
+}
+
+// Archived library github.com/AlecAivazis/survey/v2
+func pickAwsProfile(profiles []string) (string, error) {
+	var ProfileName string
+
+	// the questions to ask
+	prompt := &survey.Select{
+		Message: "Choose AWS profile:",
+		Options: profiles,
+	}
+	/*var countryQs = []*survey.Question{
+	      {
+	          Name: "profileName",
+	          Prompt: &survey.Select{
+	              Message: "Choose AWS profile:",
+	              Options: f.ProfileNames(),
+	          },
+	          Validate: survey.Required,
+	      },
+	  }
+
+	  answers := struct {
+	      ProfileName string
+	  }{}*/
+
+	// ask the question
+	err := survey.AskOne(prompt, &ProfileName)
+	//err := survey.Ask(countryQs, &answers)
+
+	return ProfileName, err
+}
+
+// Maintained library github.com/charmbracelet/huh (TODO: needs more testing)
+func pickAwsProfile2(profiles []string) (string, error) {
+	var ProfileName string
+
+	// Convert to []huh.Option
+	var opts []huh.Option[string]
+	for _, p := range profiles {
+		opts = append(opts, huh.NewOption(p, p))
+	}
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Choose AWS profile:").
+				Options(opts...).
+				Value(&ProfileName))).WithHeight(9)
+
+	err := form.Run()
+	blue := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+	fmt.Printf("%s %s\n", white.Render("Selected profile:"), blue.Render(fmt.Sprintf("%s", ProfileName)))
+
+	return ProfileName, err
 }

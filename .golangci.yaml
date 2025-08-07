@@ -1,4 +1,12 @@
+version: "2"
 linters:
+  settings:
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          files:
+            - $all
   enable:
     - bodyclose
     - contextcheck
@@ -8,9 +16,7 @@ linters:
     - errchkjson
     - errname
     - exhaustive
-    - exportloopref
-    - gofmt
-    - goimports
+    - govet
     - makezero
     - misspell
     - nakedret

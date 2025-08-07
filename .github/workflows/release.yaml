@@ -1,0 +1,111 @@
+on:
+  push:
+    tags:
+      - 'v*'
+    #tag-ignore:
+    #  - 'v*'
+  workflow_dispatch: {}
+
+env:
+  GOTELEMETRY: off
+  CGO_ENABLED: 0
+
+permissions:
+  contents: write
+
+name: Build & Release
+jobs:
+  build:
+    if: startsWith(github.ref, 'refs/tags/v')
+    name: Build
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    #needs: [ test ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # disable shallow clone - get all
+
+      #- name: Unshallow
+      #  run: git fetch --prune --unshallow
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+        id: go
+
+      - name: Generate build tag
+        run: |
+          VERSION=$(git describe --tags --always --dirty --match=v* 2> /dev/null || echo v0)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+        shell: /bin/bash -e {0}
+
+      - name: Build artefacts
+        run: |
+          echo "${VERSION} on ${{ matrix.os }}"
+          make ${{ matrix.os }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-vault-${{ matrix.os }}
+          retention-days: 7
+          path: ./aws-vault-*
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install UPX
+        run: sudo apt-get update && sudo apt-get install -y upx
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # NOTE: Disabled for {windows-amd64} due Chocolately AV false positives
+      - name: Compress binaries with UPX
+        run: |
+          chmod +x dist/aws-vault-*
+          upx dist/aws-vault-linux*
+
+      - name: Generate SHA256 checksums
+        run: |
+          cp dist/aws-vault-* .
+          make aws-vault_sha256_checksums.txt
+          cp aws-vault_sha256_checksums.txt dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Identify if this is a pre release by checking if the tag name contains -rc, -b, -a
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-b') || contains(github.ref, '-a') }}
+          files: |
+            dist/**
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          #body: "Changelog of release ${{ github.ref_name }}."
+          #append_body: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    #- name: Run GoReleaser
+    #  uses: goreleaser/goreleaser-action@v6
+    #  with:
+    #    version: '~> v2' # latest
+    #    args: release --clean
+    #    workdir: .
+    #  env:
+    #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #    VERSION: ${{ env.VERSION }}

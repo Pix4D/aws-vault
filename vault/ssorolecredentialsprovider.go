@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/99designs/keyring"
+	"github.com/byteness/keyring"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
