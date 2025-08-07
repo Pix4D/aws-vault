@@ -45,30 +45,32 @@ Now that we added the `upstream` remote, we have 3 `master` branches:
 - `origin/master`: the remote branch on `origin` (that is, our fork).
 - `upstream/master`: the remote branch on `upstream`.
 
-#### Procedure to synchronise from an upstream branch
+#### Procedure to synchronize from an upstream tag or branch
 
-We'll demonstrate the procedure using `upstream/master` as the upstream branch since this is the most common case, but the following will work with any other upstream branch.
+To ease PR reviews and the merge process, it is more convenient to synchronize progressively with upstream, targeting a specific annotated tag object at a time. The worst approach is to target directly the upstream `master` branch, especially when our fork is ahead or behind upstream by a lot of commits.
+
+We'll demonstrate the procedure using `<tag>` as the upstream point, representing an arbitrary annotated tag merged to the `upstream` master branch.
 
 1. Ensure the local master is up to date.
     ```
     git fetch origin master
     git rebase origin/master master
     ```
-2. Fetch changes from upstream master.
+2. Fetch changes from the upstream branch.
     ```
-    git fetch upstream master
+    git fetch upstream <tag>
     ```
-3. Do not push `upstream/master` to `origin`. Let is stay a local branch.
+3. Do not push `upstream/<tag>` to `origin`. Let is stay a local branch.
 4. Create merge branch.
     ```
-    git checkout -b merge-upstream
+    git checkout -b merge-upstream-<tag>
     ```
-5. Merge `upstream/master` into the local branch `merge-upstream`.
+5. Merge `upstream/<tag>` into the local branch `merge-upstream-<tag>`.
     - This might generate merge conflicts. Take your time to resolve them.
-    - If overwhelmed, you can make multiple merges of the `upstream/master` branch. Instead of merging directly from the HEAD commit, chose a merge-base from an arbitrary PR in the past and repeat until you reach HEAD.
+    - If overwhelmed, you can make multiple merges of `upstream/<tag>`. Instead of merging directly from the HEAD commit, chose a merge-base from an arbitrary PR in the past and repeat until you reach HEAD.
     - Feel free to ask for help in the PCI team chat. We want to avoid **merge damages**.
     ```
-    git merge upstream/master
+    git merge upstream/<tag>
     ```
 6. The merge command will also commit the merge (as soon as all the conflicts are resolved).
     - If needed, do one or more commits to make the code compile and pass all the tests.
@@ -78,18 +80,18 @@ We'll demonstrate the procedure using `upstream/master` as the upstream branch s
 Visually:
 
 ```mermaid
-%%{init: { 'gitGraph': {'mainBranchName': 'upstream/master', 'rotateCommitLabel': false} } }%%
+%%{init: { 'gitGraph': {'mainBranchName': 'upstream/<tag>', 'rotateCommitLabel': false} } }%%
 gitGraph
   commit id: "ancestor"
   branch origin/master
   commit id: ".."
   commit id: "..."
-  checkout upstream/master
+  checkout upstream/<tag>
   commit id: "...."
   commit id: "....."
   checkout origin/master
   branch merge-upstream
-  merge upstream/master id: "merge 1"
+  merge upstream/<tag> id: "merge 1"
   commit id: "fix-build"
   checkout origin/master
   merge merge-upstream id: "merge 2"
