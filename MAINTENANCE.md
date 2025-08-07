@@ -1,6 +1,6 @@
-# Keeping aws-vault maintained after its EOL
+# Keeping aws-vault maintained
 
-August 2025: we decided to fork [99designs's aws-vault tool](https://github.com/99designs/aws-vault) as it appears to have been abandoned by its creators and we still use this tool for day-to-day operation in PCI team, to store short-term AWS credentials.
+August 2025: we decided to fork [99designs's aws-vault tool](https://github.com/99designs/aws-vault) as it appears to have been abandoned by its creators and we still use this tool for day-to-day operation in PCI team, to manager short-term AWS credentials.
 
 There also appears to be an active (at the time of writing, at least) [fork](https://github.com/ByteNess/aws-vault) of the project, receiving bugfixes and minor updates. This increases our chances of keeping `aws-vault` "alive" and preventing it from [rotting away](https://permacomputing.net/software_rot/).
 
