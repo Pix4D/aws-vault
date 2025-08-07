@@ -47,35 +47,35 @@ Now that we added the `upstream` remote, we have 3 `master` branches:
 
 #### Procedure to synchronise from an upstream branch
 
-We'll demonstrate the procedure using `upstream/master` as the upstream branch since this is the most common case, but the following will work with any other upstream branch.
+We'll demonstrate the procedure using `<branch>` as the upstream branch. You should replace it by `master`, `main` or anything suitable such as a feature branch.
 
 1. Ensure the local master is up to date.
     ```
     git fetch origin master
     git rebase origin/master master
     ```
-2. Fetch changes from upstream master.
+2. Fetch changes from the upstream branch.
     ```
-    git fetch upstream master
+    git fetch upstream <branch>
     ```
-3. Do not push `upstream/master` to `origin`. Let is stay a local branch.
+3. Do not push `upstream/<branch>` to `origin`. Let is stay a local branch.
 4. Create merge branch.
     ```
-    git checkout -b merge-upstream
+    git checkout -b merge-upstream-<branch>
     ```
-5. Merge `upstream/master` into the local branch `merge-upstream`.
+5. Merge `upstream/<branch>` into the local branch `merge-upstream-<branch>`.
     - This might generate merge conflicts. Take your time to resolve them.
-    - If overwhelmed, you can make multiple merges of the `upstream/master` branch. Instead of merging directly from the HEAD commit, chose a merge-base from an arbitrary PR in the past and repeat until you reach HEAD.
+    - If overwhelmed, you can make multiple merges of `upstream/<branch>`. Instead of merging directly from the HEAD commit, chose a merge-base from an arbitrary PR in the past and repeat until you reach HEAD.
     - Feel free to ask for help in the PCI team chat. We want to avoid **merge damages**.
     ```
-    git merge upstream/master
+    git merge upstream/<branch>
     ```
 6. The merge command will also commit the merge (as soon as all the conflicts are resolved).
     - If needed, do one or more commits to make the code compile and pass all the tests.
     - This allows the reviewers to better understand what is happening.
 7. Open a PR in GitHub as usual, merge when approved.
 
-Visually:
+Visually (using `master` as `upstream` branch):
 
 ```mermaid
 %%{init: { 'gitGraph': {'mainBranchName': 'upstream/master', 'rotateCommitLabel': false} } }%%
