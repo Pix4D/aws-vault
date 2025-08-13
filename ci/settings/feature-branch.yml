@@ -1,0 +1,4 @@
+project: aws-vault
+gchat_hook:
+is_feature: true
+team: developers

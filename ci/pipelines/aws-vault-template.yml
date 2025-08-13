@@ -1,0 +1,86 @@
+meta:
+  docker-creds: &docker-creds
+    username: concourse
+    password: ((concourse_artifactory_password))
+  s3-params: &s3-params
+    bucket: ci-pix4d-concourse-pipeline
+    region_name: eu-west-1
+    access_key_id: ((concourse_user_access_key))
+    secret_access_key: ((concourse_user_secret_key))
+  status-handlers: &status-handlers
+    on_success:
+      put: cogito
+      no_get: true
+      inputs: [aws-vault.git]
+      params: {state: success}
+    on_failure:
+      put: cogito
+      no_get: true
+      inputs: [aws-vault.git]
+      params: {state: failure}
+    on_error:
+      put: cogito
+      no_get: true
+      inputs: [aws-vault.git]
+      params: {state: error}
+    on_abort:
+      put: cogito
+      no_get: true
+      inputs: [aws-vault.git]
+      params: {state: abort}
+
+#######################################################################
+
+resource_types:
+  - name: cogito
+    type: registry-image
+    check_every: 24h
+    source:
+      repository: pix4d/cogito
+      tag: latest
+
+#######################################################################
+
+resources:
+  - name: aws-vault.git
+    type: git
+    icon: git
+    webhook_token: ((concourse_gh_webhook))
+    source:
+      uri: git@github.com:pix4d/aws-vault.git
+      private_key: ((github_ssh_key))
+      branch: ((branch))
+      fetch_tags: true
+
+  - name: cogito
+    type: cogito
+    check_every: never
+    source:
+      owner: pix4d
+      repo: aws-vault
+      access_token: ((github_repo_status_token))
+      gchat_webhook: (gchat_hook))
+
+  - name: aws-vault-builder.docker
+    type: registry-image
+    check_every: 24h
+    source:
+      repository: docker.ci.pix4d.com/aws-vault-builder
+      tag: add-aws-vault-builder
+      <<: *docker-creds
+
+#######################################################################
+
+jobs:
+  - name: release
+    <<: *status-handlers
+    max_in_flight: 1
+    plan:
+      - get: aws-vault.git
+        trigger: true
+      - get: aws-vault-builder.docker
+      - load_var: version
+        file: aws-vault.git/.git/describe_ref
+      - task: release-all-platforms
+        image: aws-vault-builder.docker
+        file: aws-vault.git/ci/tasks/release.yml
