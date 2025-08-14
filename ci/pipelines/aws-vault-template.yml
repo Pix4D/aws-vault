@@ -69,6 +69,13 @@ resources:
       tag: add-aws-vault-builder
       <<: *docker-creds
 
+  - name: archive-linux.s3
+    type: s3
+    icon: dump-truck
+    check_every: never
+    source:
+      regexp: artifacts/((project))/((branch))/aws-vault_(\d+\.\d+\.\d+(-.+)*)_linux_amd64.tar.gz
+
 #######################################################################
 
 jobs:
@@ -79,8 +86,13 @@ jobs:
       - get: aws-vault.git
         trigger: true
       - get: aws-vault-builder.docker
-      - load_var: version
-        file: aws-vault.git/.git/describe_ref
       - task: release-all-platforms
         image: aws-vault-builder.docker
         file: aws-vault.git/ci/tasks/release.yml
+        params:
+          GITHUB_TOKEN: ((janus_developers_rw_token))
+      - put: archive-linux.s3
+        no_get: true
+        inputs: [dist]
+        params:
+          file: dist/aws-vault_*_linux_amd64.tar.gz
