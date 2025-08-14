@@ -11,4 +11,4 @@ run:
   args:
     - -ec
     - |
-      goreleaser release
+      goreleaser release --snapshot
