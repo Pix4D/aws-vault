@@ -1,0 +1,14 @@
+---
+platform: linux
+inputs:
+  - name: aws-vault.git
+outputs:
+  - name: dist
+
+run:
+  dir: aws-vault.git
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      goreleaser release
