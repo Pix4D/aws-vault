@@ -1,0 +1,82 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  VERSION:
+    sh: |
+        if [ -e .git/describe_ref ]; then
+          # Running in Concourse
+          cat .git/describe_ref
+        else
+          git describe --long --dirty --always
+        fi
+  LDFLAGS: -w -s -X main.currentVersion={{.VERSION}}
+  # must match the version in the Dockerfile:
+  # https://github.com/Pix4D/linux-image-build/blob/master/dockerfiles/fly_helper/Dockerfile
+  GOLANGCI_VERSION: 2.1.2
+  GO_VERSION: 1.24.2
+
+tasks:
+  install-deps:
+    desc: Install tool dependencies.
+    deps:
+      - install-lint
+
+  lint:
+    desc: Run only the source lint (low-level, run 'lint' instead)
+    cmds:
+      - golangci-lint run ./...
+
+  build:
+    desc: Build aws-vault
+    cmds:
+      - go build -o bin/aws-vault -ldflags="{{.LDFLAGS}}" -v
+
+  build-linux-amd64:
+    desc: Build aws-vault for linux-amd64
+    cmds:
+      - go build -o bin/$GOOS-$GOARCH/aws-vault -ldflags="{{.LDFLAGS}}" -v
+      - cd bin/$GOOS-$GOARCH && tar -czf ../aws-vault-{{.VERSION}}-$GOOS-$GOARCH.tar.gz *
+    env:
+      CGO_ENABLED: 0
+      GOOS: linux
+      GOARCH: amd64
+
+  build-darwin-amd64:
+    desc: Build aws-vault for darwin-amd64
+    cmds:
+      - go build -o bin/$GOOS-$GOARCH/aws-vault -ldflags="{{.LDFLAGS}}" -v
+      - cd bin/$GOOS-$GOARCH && zip -r ../aws-vault-{{.VERSION}}-$GOOS-$GOARCH.zip *
+    env:
+      CGO_ENABLED: 0
+      GOOS: darwin
+      GOARCH: amd64
+
+  build-darwin-arm64:
+    desc: Build aws-vault for darwin-arm64
+    cmds:
+      - go build -o bin/$GOOS-$GOARCH/aws-vault -ldflags="{{.LDFLAGS}}" -v
+      - cd bin/$GOOS-$GOARCH && zip -r ../aws-vault-{{.VERSION}}-$GOOS-$GOARCH.zip *
+    env:
+      CGO_ENABLED: 0
+      GOOS: darwin
+      GOARCH: arm64
+
+  clean:
+    cmds:
+      - rm -rf bin
+
+  install:go:darwin:
+    desc: Install Go SDK in job directory
+    dir: "{{.JOB_ROOT}}"
+    cmds:
+      - |
+        curl --fail --no-progress-meter --location https://go.dev/dl/go{{.GO_VERSION}}.darwin-arm64.tar.gz | tar xzf -
+      - which go
+      - go version
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - go test -v ./cli ./iso8601 ./vault
