@@ -1,0 +1,26 @@
+---
+platform: linux
+params:
+  VERSION:
+  PLATFORM:
+inputs:
+  - name: aws-vault.git
+outputs:
+  - name: out
+
+run:
+  dir: aws-vault.git
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      : "${VERSION?The pipeline must set this parameter}"
+      : "${PLATFORM?The pipeline must set this parameter}"
+
+      echo
+      echo Building for "$PLATFORM"
+      task build-"$PLATFORM"
+
+      echo
+      echo Copying artifact to output
+      cp bin/aws-vault* ../out/
