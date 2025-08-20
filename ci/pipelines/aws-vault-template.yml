@@ -84,7 +84,7 @@ resources:
     check_every: 24h
     source:
       repository: docker.ci.pix4d.com/aws-vault-builder
-      tag: add-aws-vault-builder
+      tag: "20250820081839"
       <<: *docker-creds
 
 ##########################################################################################
