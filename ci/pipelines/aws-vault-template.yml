@@ -12,7 +12,8 @@ meta:
     ARTIFACTORY_USER: concourse
     ARTIFACTORY_PASSWORD: ((concourse_artifactory_password))
     CODESIGNER_TOKEN: ((codesigner_token))
-  status-handlers: &status-handlers
+  base-job: &base-job
+    max_in_flight: 1
     on_success:
       put: cogito
       no_get: true
@@ -28,11 +29,6 @@ meta:
       no_get: true
       inputs: [aws-vault.git]
       params: {state: error}
-    on_abort:
-      put: cogito
-      no_get: true
-      inputs: [aws-vault.git]
-      params: {state: abort}
 
 ##########################################################################################
 
@@ -56,6 +52,7 @@ resources:
       private_key: ((github_ssh_key))
       branch: ((branch))
       fetch_tags: true
+      disable_ci_skip: true # let the git resource optimize the check step
 
   - name: cogito
     type: cogito
@@ -72,14 +69,6 @@ resources:
     check_every: never
     source:
       regexp: artifacts/((project))/((branch))/aws-vault-v(\d+\.\d+\.\d+(-.+)*)-linux-amd64.tar.gz
-      <<: *s3-params
-
-  - name: archive-darwin-amd64.s3
-    type: s3
-    icon: dump-truck
-    check_every: never
-    source:
-      regexp: artifacts/((project))/((branch))/aws-vault-v(\d+\.\d+\.\d+(-.+)*)-darwin-amd64.zip
       <<: *s3-params
 
   - name: archive-darwin-arm64.s3
@@ -102,8 +91,7 @@ resources:
 
 jobs:
   - name: test
-    max_in_flight: 1
-    <<: *status-handlers
+    <<: *base-job
     plan:
       - get: aws-vault.git
         trigger: true
@@ -112,15 +100,12 @@ jobs:
         - task: test-linux
           image: aws-vault-builder.docker
           file: aws-vault.git/ci/tasks/test-linux.yml
-          params:
-            GOFLAGS: "-buildvcs=false"
         - task: test-darwin
           file: aws-vault.git/ci/tasks/test-darwin.yml
           tags: [sequoia]
 
-  - name: build-helper
-    max_in_flight: 1
-    <<: *status-handlers
+  - name: build
+    <<: *base-job
     plan:
       - get: aws-vault.git
         passed: [test]
@@ -129,7 +114,7 @@ jobs:
       - load_var: version
         file: aws-vault.git/.git/describe_ref
       - in_parallel:
-          # fail_fast: true
+          fail_fast: true
           steps:
             - do:
               - task: build-linux
@@ -140,27 +125,11 @@ jobs:
                 params:
                   VERSION: ((.:version))
                   PLATFORM: linux-amd64
-                  GOFLAGS: "-buildvcs=false"
               - put: archive-linux.s3
                 no_get: true
                 inputs: [out-linux]
                 params:
                   file: out-linux/aws-vault-*.gz
-            - do:
-              - task: build-darwin-amd64
-                image: aws-vault-builder.docker
-                file: aws-vault.git/ci/tasks/build.yml
-                output_mapping:
-                  out: out-darwin-amd64
-                params:
-                  VERSION: ((.:version))
-                  PLATFORM: darwin-amd64
-                  GOFLAGS: "-buildvcs=false"
-              - put: archive-darwin-amd64.s3
-                no_get: true
-                inputs: [out-darwin-amd64]
-                params:
-                  file: out-darwin-amd64/aws-vault-*.zip
             - do:
               - task: build-darwin-arm64
                 image: aws-vault-builder.docker
@@ -170,7 +139,6 @@ jobs:
                 params:
                   VERSION: ((.:version))
                   PLATFORM: darwin-arm64
-                  GOFLAGS: "-buildvcs=false"
               - put: archive-darwin-arm64.s3
                 no_get: true
                 inputs: [out-darwin-arm64]

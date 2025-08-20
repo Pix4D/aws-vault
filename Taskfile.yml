@@ -11,11 +11,10 @@ vars:
         else
           git describe --long --dirty --always
         fi
-  LDFLAGS: -w -s -X main.currentVersion={{.VERSION}}
+  LDFLAGS: -w -s -X main.Version={{.VERSION}}
   # must match the version in the Dockerfile:
-  # https://github.com/Pix4D/linux-image-build/blob/master/dockerfiles/fly_helper/Dockerfile
-  GOLANGCI_VERSION: 2.1.2
-  GO_VERSION: 1.24.2
+  # https://github.com/Pix4D/linux-image-build/blob/master/dockerfiles/aws-vault/Dockerfile
+  GO_VERSION: 1.20
 
 tasks:
   install-deps:
@@ -79,4 +78,4 @@ tasks:
   test:
     desc: Run unit tests
     cmds:
-      - go test -v ./cli ./iso8601 ./vault
+      - go test -v ./...
