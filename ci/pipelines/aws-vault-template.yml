@@ -145,3 +145,32 @@ jobs:
                 inputs: [out-darwin-arm64]
                 params:
                   file: out-darwin-arm64/aws-vault-*.zip
+
+  - name: smoke-tests-unsigned
+    <<: *base-job
+    plan:
+      - get: aws-vault.git
+        passed: [build]
+        trigger: true
+      - load_var: version
+        reveal: true
+        file: aws-vault.git/.git/describe_ref
+      - get: archive-linux.s3
+        trigger: true
+        passed: [build]
+      - get: archive-darwin-arm64.s3
+        passed: [build]
+      - in_parallel:
+        - task: smoke-test-linux
+          file: aws-vault.git/ci/tasks/smoke-test-linux.yml
+          input_mapping:
+            artifacts: archive-linux.s3
+          params:
+            VERSION: ((.:version))
+        - task: smoke-test-darwin
+          tags: [sonoma-tester-rosetta]
+          file: aws-vault.git/ci/tasks/smoke-test-darwin.yml
+          input_mapping:
+            artifacts: archive-darwin-arm64.s3
+          params:
+            VERSION: ((.:version))
