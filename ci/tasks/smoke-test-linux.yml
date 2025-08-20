@@ -1,0 +1,34 @@
+---
+platform: linux
+image_resource:
+  type: registry-image
+  source:
+    repository: alpine
+
+params:
+  VERSION:
+
+inputs:
+  - name: artifacts
+
+run:
+  path: /bin/sh
+  dir: artifacts
+  args:
+    - -ec
+    - |
+      : "${VERSION?The pipeline must set this parameter}"
+
+      echo
+      echo Extract the artifact
+      tar xzf *tar.gz
+
+      echo
+      echo Smoke tests
+      echo
+      echo "Test if aws-vault has embedded the correct version"
+      # We need to redirect stderr to stdout because aws-vault's CLI library prints version to stderr.
+      ./aws-vault --version 2>&1 | grep "$VERSION"
+      echo
+      echo "Test if aws-vault prints help for a subcommand"
+      ./aws-vault exec --help
