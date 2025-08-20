@@ -1,0 +1,25 @@
+---
+platform: darwin
+inputs:
+  - name: aws-vault.git
+
+run:
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      export JOB_ROOT=$PWD
+      export GOPATH=$JOB_ROOT/go
+      PATH=$JOB_ROOT/go/bin:$JOB_ROOT:$PATH
+
+      echo
+      echo ====Installing dependencies====
+      curl --fail --no-progress-meter --location https://github.com/go-task/task/releases/download/v3.24.0/task_darwin_amd64.tar.gz | tar xzf - task
+
+      cd aws-vault.git
+
+      task install:go:darwin
+
+      echo
+      echo Running the unit tests
+      task test

@@ -1,0 +1,146 @@
+meta:
+  docker-creds: &docker-creds
+    username: concourse
+    password: ((concourse_artifactory_password))
+  s3-params: &s3-params
+    bucket: ci-pix4d-concourse-pipeline
+    region_name: eu-west-1
+    access_key_id: ((concourse_user_access_key))
+    secret_access_key: ((concourse_user_secret_key))
+  release-params: &release-params
+    ARTIFACTORY_URL: https://artifactory.ci.pix4d.com/artifactory
+    ARTIFACTORY_USER: concourse
+    ARTIFACTORY_PASSWORD: ((concourse_artifactory_password))
+    CODESIGNER_TOKEN: ((codesigner_token))
+  base-job: &base-job
+    max_in_flight: 1
+    on_success:
+      put: cogito
+      no_get: true
+      inputs: [aws-vault.git]
+      params: {state: success}
+    on_failure:
+      put: cogito
+      no_get: true
+      inputs: [aws-vault.git]
+      params: {state: failure}
+    on_error:
+      put: cogito
+      no_get: true
+      inputs: [aws-vault.git]
+      params: {state: error}
+
+##########################################################################################
+
+resource_types:
+  - name: cogito
+    type: registry-image
+    check_every: 24h
+    source:
+      repository: pix4d/cogito
+      tag: latest
+
+##########################################################################################
+
+resources:
+  - name: aws-vault.git
+    type: git
+    icon: git
+    webhook_token: ((concourse_gh_webhook))
+    source:
+      uri: git@github.com:pix4d/aws-vault.git
+      private_key: ((github_ssh_key))
+      branch: ((branch))
+      fetch_tags: true
+      disable_ci_skip: true # let the git resource optimize the check step
+
+  - name: cogito
+    type: cogito
+    check_every: never
+    source:
+      owner: pix4d
+      repo: aws-vault
+      access_token: ((github_repo_status_token))
+      gchat_webhook: ((gchat_hook))
+
+  - name: archive-linux.s3
+    type: s3
+    icon: dump-truck
+    check_every: never
+    source:
+      regexp: artifacts/((project))/((branch))/aws-vault-v(\d+\.\d+\.\d+(-.+)*)-linux-amd64.tar.gz
+      <<: *s3-params
+
+  - name: archive-darwin-arm64.s3
+    type: s3
+    icon: dump-truck
+    check_every: never
+    source:
+      regexp: artifacts/((project))/((branch))/aws-vault-v(\d+\.\d+\.\d+(-.+)*)-darwin-arm64.zip
+      <<: *s3-params
+
+  - name: aws-vault-builder.docker
+    type: registry-image
+    check_every: 24h
+    source:
+      repository: docker.ci.pix4d.com/aws-vault-builder
+      tag: "20250820081839"
+      <<: *docker-creds
+
+##########################################################################################
+
+jobs:
+  - name: test
+    <<: *base-job
+    plan:
+      - get: aws-vault.git
+        trigger: true
+      - get: aws-vault-builder.docker
+      - in_parallel:
+        - task: test-linux
+          image: aws-vault-builder.docker
+          file: aws-vault.git/ci/tasks/test-linux.yml
+        - task: test-darwin
+          file: aws-vault.git/ci/tasks/test-darwin.yml
+          tags: [sequoia]
+
+  - name: build
+    <<: *base-job
+    plan:
+      - get: aws-vault.git
+        passed: [test]
+        trigger: true
+      - get: aws-vault-builder.docker
+      - load_var: version
+        file: aws-vault.git/.git/describe_ref
+      - in_parallel:
+          fail_fast: true
+          steps:
+            - do:
+              - task: build-linux
+                image: aws-vault-builder.docker
+                file: aws-vault.git/ci/tasks/build.yml
+                output_mapping:
+                  out: out-linux
+                params:
+                  VERSION: ((.:version))
+                  PLATFORM: linux-amd64
+              - put: archive-linux.s3
+                no_get: true
+                inputs: [out-linux]
+                params:
+                  file: out-linux/aws-vault-*.gz
+            - do:
+              - task: build-darwin-arm64
+                image: aws-vault-builder.docker
+                file: aws-vault.git/ci/tasks/build.yml
+                output_mapping:
+                  out: out-darwin-arm64
+                params:
+                  VERSION: ((.:version))
+                  PLATFORM: darwin-arm64
+              - put: archive-darwin-arm64.s3
+                no_get: true
+                inputs: [out-darwin-arm64]
+                params:
+                  file: out-darwin-arm64/aws-vault-*.zip

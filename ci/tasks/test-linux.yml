@@ -1,0 +1,20 @@
+---
+platform: linux
+params:
+  FLY_HELPER_PASSWORD:
+inputs:
+  - name: aws-vault.git
+
+run:
+  dir: aws-vault.git
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      echo
+      echo Running the lint
+      task lint
+
+      echo
+      echo Running the unit tests
+      task test
