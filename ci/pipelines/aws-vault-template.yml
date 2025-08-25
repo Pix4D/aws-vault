@@ -40,6 +40,12 @@ resource_types:
       repository: pix4d/cogito
       tag: latest
 
+  - name: keyval
+    type: registry-image
+    check_every: 24h
+    source:
+      repository: swce/keyval-resource
+
 ##########################################################################################
 
 resources:
@@ -86,6 +92,15 @@ resources:
       repository: docker.ci.pix4d.com/aws-vault-builder
       tag: "20250820081839"
       <<: *docker-creds
+
+  - name: codesign-request-id.keyval
+    type: keyval
+    check_every: never
+    source:
+      # UUID + BRANCH values to ensure a unique config.
+      # Prevents Concourse from merging history with pipelines from other projects and other branches.
+      unique-id: 078648fb-3c97-465e-b621-07de48e17c15
+      branch: ((branch))
 
 ##########################################################################################
 
@@ -174,3 +189,26 @@ jobs:
             artifacts: archive-darwin-arm64.s3
           params:
             VERSION: ((.:version))
+
+
+  - name: request-signature
+    <<: *base-job
+    plan:
+      - in_parallel:
+        - get: aws-vault.git
+          passed: [smoke-tests-unsigned]
+          trigger: false
+        - get: archive-darwin-arm64.s3
+          passed: [smoke-tests-unsigned]
+          trigger: false
+          params:
+            skip_download: "true"
+      - task: request-archive-signature
+        file: aws-vault.git/ci/tasks/request-signature.yml
+        params:
+          PRODUCT_NAME: "aws-vault"
+      - put: codesign-request-id.keyval
+        no_get: true
+        inputs: [codesign]
+        params:
+          file: codesign/request.properties
