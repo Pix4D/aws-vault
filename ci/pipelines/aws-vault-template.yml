@@ -183,13 +183,12 @@ jobs:
           params:
             VERSION: ((.:version))
         - task: smoke-test-darwin
-          tags: [sonoma-tester-rosetta]
+          tags: [sonoma-tester]
           file: aws-vault.git/ci/tasks/smoke-test-darwin.yml
           input_mapping:
             artifacts: archive-darwin-arm64.s3
           params:
             VERSION: ((.:version))
-
 
   - name: request-signature
     <<: *base-job
@@ -212,3 +211,27 @@ jobs:
         inputs: [codesign]
         params:
           file: codesign/request.properties
+
+  - name: smoke-tests-signed
+    <<: *base-job
+    plan:
+      - get: aws-vault.git
+        trigger: false
+        passed: [request-signature]
+      - load_var: version
+        file: aws-vault.git/.git/describe_ref
+        reveal: true
+      - get: codesign-request-id.keyval
+        passed: [request-signature]
+      - task: fetch-signed-artifacts
+        file: aws-vault.git/ci/tasks/fetch-signed-artifacts.yml
+        params:
+          <<: *artifactory-params
+          VERSION: ((.:version))
+      - task: smoke-test-darwin
+        tags: [sonoma-tester]
+        file: aws-vault.git/ci/tasks/smoke-test-darwin.yml
+        input_mapping:
+          artifacts: signed-artifacts-darwin
+        params:
+          VERSION: ((.:version))
