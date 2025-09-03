@@ -1,0 +1,62 @@
+---
+platform: linux
+image_resource:
+  type: registry-image
+  source:
+    repository: curlimages/curl
+
+params:
+  ARTIFACTORY_URL:
+  ARTIFACTORY_USER:
+  ARTIFACTORY_PASSWORD:
+  CODESIGNER_TOKEN:
+  VERSION:
+
+inputs:
+  - name: codesign-request-id.keyval
+outputs:
+  - name: signed-artifacts-darwin
+
+run:
+  user: root
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      : "${ARTIFACTORY_URL?The pipeline must set this parameter}"
+      : "${ARTIFACTORY_USER?The pipeline must set this parameter}"
+      : "${ARTIFACTORY_PASSWORD?The pipeline must set this parameter}"
+      : "${CODESIGNER_TOKEN?The pipeline must set this parameter}"
+      : "${VERSION?The pipeline must set this parameter}"
+
+      apk update && \
+      apk upgrade && \
+      apk add jq
+
+      # FETCH THE CODESIGNING REQUEST DATA AND EXTRACT ARTIFACT URL
+      CODESIGN_ID=$(cat codesign-request-id.keyval/keyval.properties | grep -m 1 REQUEST_ID | cut -d'=' -f2)
+
+      curl --fail --no-progress-meter \
+        -H "Authorization: Token $CODESIGNER_TOKEN" \
+        https://codesigner.ci.pix4d.com/api/v1/requests/$CODESIGN_ID/ \
+        --output response.json
+
+      for MAC_URL in $(cat response.json | jq -r '. | .artifacts | .[] | select(.os=="macOS") | .notarized_url'); do
+        echo $MAC_URL | grep -q "null" && echo "Artifact is not yet signed or notarized" && exit 1
+        MAC_ARTIFACT_NAME=$(echo $MAC_URL | cut -f 8 -d '/')
+        if [ -z "$(echo $MAC_ARTIFACT_NAME | grep -oF $VERSION)" ];then
+            echo $MAC_ARTIFACT_NAME
+            echo $VERSION
+            echo "The mac versions do not match"
+            exit 1
+        fi
+
+        # FETCH THE DARWIN ARTIFACT DIRECTLY FROM ARTIFACTORY AND STORE IT IN THE OUTPUT DIRECTORY
+        echo
+        echo "Downloading $MAC_ARTIFACT_NAME from $MAC_URL"
+        curl --fail --no-progress-meter \
+          -u $ARTIFACTORY_USER:$ARTIFACTORY_PASSWORD \
+          --get $MAC_URL \
+          --output signed-artifacts-darwin/$MAC_ARTIFACT_NAME
+
+      done
