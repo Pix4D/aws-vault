@@ -102,6 +102,14 @@ resources:
       unique-id: 078648fb-3c97-465e-b621-07de48e17c15
       branch: ((branch))
 
+  - name: gh-release
+    type: github-release
+    check_every: never
+    source:
+      owner: Pix4D
+      repository: aws-vault
+      access_token: ((janus_developers_rw_token))
+
 ##########################################################################################
 
 jobs:
@@ -235,3 +243,53 @@ jobs:
           artifacts: signed-artifacts-darwin
         params:
           VERSION: ((.:version))
+
+  - name: release
+    <<: *base-job
+    disable_manual_trigger: ((is_feature))
+    plan:
+      - get: aws-vault.git
+        trigger: true
+        passed: [smoke-tests-signed]
+      - load_var: version
+        reveal: true
+        file: aws-vault.git/.git/describe_ref
+      - load_var: head_commit
+        reveal: true
+        file: aws-vault.git/.git/HEAD
+      - get: codesign-request-id.keyval
+        passed: [smoke-tests-signed]
+      - get: archive-linux.s3
+        trigger: false
+        passed: [smoke-tests-unsigned]
+      - task: fetch-signed-artifacts
+        file: aws-vault.git/ci/tasks/fetch-signed-artifacts.yml
+        params:
+          <<: *artifactory-params
+          VERSION: ((.:version))
+      - task: prepare-release
+        file: aws-vault.git/ci/tasks/prepare-release.yml
+        params:
+          RELEASE_NAME: ((.:version))
+          RELEASE_TAG: ((.:version))
+          RELEASE_COMMIT: ((.:head_commit))
+      - put: gh-release
+        no_get: true
+        inputs:
+          - aws-vault.git
+          - final-artifacts
+          - release-info
+        params:
+          name: release-info/name
+          tag: release-info/tag
+          commitish: release-info/commitish
+          generate_release_notes: true
+          globs:
+            - final-artifacts/*
+      - put: cogito
+        no_get: true
+        inputs: []
+        params:
+          state: success
+          sinks: [gchat]
+          chat_message: "Released aws-vault version ((.:version))"
