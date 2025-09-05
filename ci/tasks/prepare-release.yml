@@ -1,0 +1,64 @@
+---
+platform: linux
+image_resource:
+  type: registry-image
+  source:
+    repository: curlimages/curl
+
+params:
+  RELEASE_NAME:
+  RELEASE_TAG:
+  RELEASE_COMMITISH:
+
+inputs:
+  - name: archive-linux.s3
+  - name: signed-artifacts-darwin
+outputs:
+  - name: final-artifacts
+  - name: release-info
+
+run:
+  user: root
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      : "${RELEASE_NAME?The pipeline must set this parameter}"
+      : "${RELEASE_TAG?The pipeline must set this parameter}"
+      : "${RELEASE_COMMITISH?The pipeline must set this parameter}"
+
+      apk update && \
+      apk upgrade && \
+      apk add jq
+
+      # PREPARE THE MAC ARTIFACTS
+      for MAC_ARTIFACT in $( ls signed-artifacts-darwin/*.zip ); do
+        if [ -z "$(echo $MAC_ARTIFACT | grep -oF $RELEASE_TAG)" ];then
+            echo $MAC_ARTIFACT
+            echo $RELEASE_TAG
+            echo "The darwin versions do not match"
+            exit 1
+        fi
+        echo
+        echo "Copying $MAC_ARTIFACT to final-artifacts/"
+        cp $MAC_ARTIFACT final-artifacts/
+      done
+
+      # PREPARE THE LINUX ARTIFACT
+      LINUX_ARTIFACT=$( ls archive-linux.s3/*.tar.gz )
+      if [ -z "$(echo $LINUX_ARTIFACT | grep -oF $RELEASE_TAG)" ];then
+          echo $LINUX_ARTIFACT
+          echo $RELEASE_TAG
+          echo "The linux versions do not match"
+          exit 1
+      fi
+      echo
+      echo "Copying archive-linux.s3/$LINUX_ARTIFACT to final-artifacts/"
+      cp $LINUX_ARTIFACT final-artifacts/
+
+      # PREPARE THE RELEASE INFO
+      echo
+      echo "Populating release-info"
+      echo $RELEASE_NAME > release-info/name
+      echo $RELEASE_TAG > release-info/tag
+      echo $RELEASE_COMMIT > release-info/commitish
