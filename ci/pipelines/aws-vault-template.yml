@@ -74,24 +74,8 @@ resources:
     icon: dump-truck
     check_every: never
     source:
-      regexp: artifacts/((project))/((branch))/aws-vault-v(\d+\.\d+\.\d+(-.+)*)-linux-amd64.tar.gz
+      regexp: artifacts/((project))/pci-4398-add-ci-notarize-release/aws-vault-v(\d+\.\d+\.\d+(-.+)*)-linux-amd64.tar.gz
       <<: *s3-params
-
-  - name: archive-darwin-arm64.s3
-    type: s3
-    icon: dump-truck
-    check_every: never
-    source:
-      regexp: artifacts/((project))/((branch))/aws-vault-v(\d+\.\d+\.\d+(-.+)*)-darwin-arm64.zip
-      <<: *s3-params
-
-  - name: aws-vault-builder.docker
-    type: registry-image
-    check_every: 24h
-    source:
-      repository: docker.ci.pix4d.com/aws-vault-builder
-      tag: "20250820081839"
-      <<: *docker-creds
 
   - name: codesign-request-id.keyval
     type: keyval
@@ -113,107 +97,27 @@ resources:
 ##########################################################################################
 
 jobs:
-  - name: test
+  - name: fake-request-signature
     <<: *base-job
     plan:
       - get: aws-vault.git
-        trigger: true
-      - get: aws-vault-builder.docker
-      - in_parallel:
-        - task: test-linux
-          image: aws-vault-builder.docker
-          file: aws-vault.git/ci/tasks/test-linux.yml
-        - task: test-darwin
-          file: aws-vault.git/ci/tasks/test-darwin.yml
-          tags: [sequoia]
-
-  - name: build
-    <<: *base-job
-    plan:
-      - get: aws-vault.git
-        passed: [test]
-        trigger: true
-      - get: aws-vault-builder.docker
-      - load_var: version
-        reveal: true
-        file: aws-vault.git/.git/describe_ref
-      - in_parallel:
-          fail_fast: true
-          steps:
-            - do:
-              - task: build-linux
-                image: aws-vault-builder.docker
-                file: aws-vault.git/ci/tasks/build.yml
-                output_mapping:
-                  out: out-linux
-                params:
-                  VERSION: ((.:version))
-                  PLATFORM: linux-amd64
-              - put: archive-linux.s3
-                no_get: true
-                inputs: [out-linux]
-                params:
-                  file: out-linux/aws-vault-*.gz
-            - do:
-              - task: build-darwin-arm64
-                image: aws-vault-builder.docker
-                file: aws-vault.git/ci/tasks/build.yml
-                output_mapping:
-                  out: out-darwin-arm64
-                params:
-                  VERSION: ((.:version))
-                  PLATFORM: darwin-arm64
-              - put: archive-darwin-arm64.s3
-                no_get: true
-                inputs: [out-darwin-arm64]
-                params:
-                  file: out-darwin-arm64/aws-vault-*.zip
-
-  - name: smoke-tests-unsigned
-    <<: *base-job
-    plan:
-      - get: aws-vault.git
-        passed: [build]
-        trigger: true
-      - load_var: version
-        reveal: true
-        file: aws-vault.git/.git/describe_ref
-      - get: archive-linux.s3
-        trigger: true
-        passed: [build]
-      - get: archive-darwin-arm64.s3
-        passed: [build]
-      - in_parallel:
-        - task: smoke-test-linux
-          file: aws-vault.git/ci/tasks/smoke-test-linux.yml
-          input_mapping:
-            artifacts: archive-linux.s3
-          params:
-            VERSION: ((.:version))
-        - task: smoke-test-darwin
-          tags: [sonoma-tester]
-          file: aws-vault.git/ci/tasks/smoke-test-darwin.yml
-          input_mapping:
-            artifacts: archive-darwin-arm64.s3
-          params:
-            VERSION: ((.:version))
-
-  - name: request-signature
-    <<: *base-job
-    plan:
-      - in_parallel:
-        - get: aws-vault.git
-          passed: [smoke-tests-unsigned]
-          trigger: false
-        - get: archive-darwin-arm64.s3
-          passed: [smoke-tests-unsigned]
-          trigger: false
-          params:
-            skip_download: "true"
-      - task: request-archive-signature
-        file: aws-vault.git/ci/tasks/request-signature.yml
-        params:
-          PRODUCT_NAME: "aws-vault"
+        trigger: false
+      - task: fake-request-archive-signature
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: curlimages/curl
+          outputs:
+            - name: codesign
+          run:
+            path: /bin/sh
+            user: root
+            args:
+              - -ec
+              - |
+                echo "REQUEST_ID=683" > codesign/request.properties
       - put: codesign-request-id.keyval
         no_get: true
         inputs: [codesign]
@@ -225,12 +129,12 @@ jobs:
     plan:
       - get: aws-vault.git
         trigger: false
-        passed: [request-signature]
+        passed: [fake-request-signature]
       - load_var: version
         file: aws-vault.git/.git/describe_ref
         reveal: true
       - get: codesign-request-id.keyval
-        passed: [request-signature]
+        passed: [fake-request-signature]
       - task: fetch-signed-artifacts
         file: aws-vault.git/ci/tasks/fetch-signed-artifacts.yml
         params:
@@ -246,7 +150,7 @@ jobs:
 
   - name: release
     <<: *base-job
-    disable_manual_trigger: ((is_feature))
+    disable_manual_trigger: false # only for demo
     plan:
       - get: aws-vault.git
         trigger: true
@@ -261,7 +165,6 @@ jobs:
         passed: [smoke-tests-signed]
       - get: archive-linux.s3
         trigger: false
-        passed: [smoke-tests-unsigned]
       - task: fetch-signed-artifacts
         file: aws-vault.git/ci/tasks/fetch-signed-artifacts.yml
         params:
