@@ -172,17 +172,18 @@ jobs:
   - name: smoke-tests-unsigned
     <<: *base-job
     plan:
-      - get: aws-vault.git
-        passed: [build]
-        trigger: true
+      - in_parallel:
+        - get: aws-vault.git
+          passed: [build]
+          trigger: true
+        - get: archive-linux.s3
+          trigger: true
+          passed: [build]
+        - get: archive-darwin-arm64.s3
+          passed: [build]
       - load_var: version
         reveal: true
         file: aws-vault.git/.git/describe_ref
-      - get: archive-linux.s3
-        trigger: true
-        passed: [build]
-      - get: archive-darwin-arm64.s3
-        passed: [build]
       - in_parallel:
         - task: smoke-test-linux
           file: aws-vault.git/ci/tasks/smoke-test-linux.yml
@@ -204,10 +205,8 @@ jobs:
       - in_parallel:
         - get: aws-vault.git
           passed: [smoke-tests-unsigned]
-          trigger: false
         - get: archive-darwin-arm64.s3
           passed: [smoke-tests-unsigned]
-          trigger: false
           params:
             skip_download: "true"
       - task: request-archive-signature
@@ -223,14 +222,14 @@ jobs:
   - name: smoke-tests-signed
     <<: *base-job
     plan:
-      - get: aws-vault.git
-        trigger: false
-        passed: [request-signature]
+      - in_parallel:
+        - get: aws-vault.git
+          passed: [request-signature]
+        - get: codesign-request-id.keyval
+          passed: [request-signature]
       - load_var: version
         file: aws-vault.git/.git/describe_ref
         reveal: true
-      - get: codesign-request-id.keyval
-        passed: [request-signature]
       - task: fetch-signed-artifacts
         file: aws-vault.git/ci/tasks/fetch-signed-artifacts.yml
         params:
@@ -248,20 +247,21 @@ jobs:
     <<: *base-job
     disable_manual_trigger: ((is_feature))
     plan:
-      - get: aws-vault.git
-        trigger: true
-        passed: [smoke-tests-signed]
+      - in_parallel:
+        - get: aws-vault.git
+          trigger: true
+          passed: [smoke-tests-signed]
+        - load_var: head_commit
+          reveal: true
+          file: aws-vault.git/.git/HEAD
+        - get: codesign-request-id.keyval
+          passed: [smoke-tests-signed]
+        - get: archive-linux.s3
+          trigger: false
+          passed: [smoke-tests-unsigned]
       - load_var: version
         reveal: true
         file: aws-vault.git/.git/describe_ref
-      - load_var: head_commit
-        reveal: true
-        file: aws-vault.git/.git/HEAD
-      - get: codesign-request-id.keyval
-        passed: [smoke-tests-signed]
-      - get: archive-linux.s3
-        trigger: false
-        passed: [smoke-tests-unsigned]
       - task: fetch-signed-artifacts
         file: aws-vault.git/ci/tasks/fetch-signed-artifacts.yml
         params:
