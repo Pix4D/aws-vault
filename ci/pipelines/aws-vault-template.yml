@@ -7,7 +7,7 @@ meta:
     region_name: eu-west-1
     access_key_id: ((concourse_user_access_key))
     secret_access_key: ((concourse_user_secret_key))
-  release-params: &release-params
+  artifactory-params: &artifactory-params
     ARTIFACTORY_URL: https://artifactory.ci.pix4d.com/artifactory
     ARTIFACTORY_USER: concourse
     ARTIFACTORY_PASSWORD: ((concourse_artifactory_password))
@@ -39,6 +39,12 @@ resource_types:
     source:
       repository: pix4d/cogito
       tag: latest
+
+  - name: keyval
+    type: registry-image
+    check_every: 24h
+    source:
+      repository: swce/keyval-resource
 
 ##########################################################################################
 
@@ -87,6 +93,23 @@ resources:
       tag: "20250820081839"
       <<: *docker-creds
 
+  - name: codesign-request-id.keyval
+    type: keyval
+    check_every: never
+    source:
+      # UUID + BRANCH values to ensure a unique config.
+      # Prevents Concourse from merging history with pipelines from other projects and other branches.
+      unique-id: 078648fb-3c97-465e-b621-07de48e17c15
+      branch: ((branch))
+
+  - name: gh-release
+    type: github-release
+    check_every: never
+    source:
+      owner: Pix4D
+      repository: aws-vault
+      access_token: ((janus_developers_rw_token))
+
 ##########################################################################################
 
 jobs:
@@ -112,6 +135,7 @@ jobs:
         trigger: true
       - get: aws-vault-builder.docker
       - load_var: version
+        reveal: true
         file: aws-vault.git/.git/describe_ref
       - in_parallel:
           fail_fast: true
@@ -144,3 +168,128 @@ jobs:
                 inputs: [out-darwin-arm64]
                 params:
                   file: out-darwin-arm64/aws-vault-*.zip
+
+  - name: smoke-tests-unsigned
+    <<: *base-job
+    plan:
+      - in_parallel:
+        - get: aws-vault.git
+          passed: [build]
+          trigger: true
+        - get: archive-linux.s3
+          trigger: true
+          passed: [build]
+        - get: archive-darwin-arm64.s3
+          passed: [build]
+      - load_var: version
+        reveal: true
+        file: aws-vault.git/.git/describe_ref
+      - in_parallel:
+        - task: smoke-test-linux
+          file: aws-vault.git/ci/tasks/smoke-test-linux.yml
+          input_mapping:
+            artifacts: archive-linux.s3
+          params:
+            VERSION: ((.:version))
+        - task: smoke-test-darwin
+          tags: [sonoma-tester]
+          file: aws-vault.git/ci/tasks/smoke-test-darwin.yml
+          input_mapping:
+            artifacts: archive-darwin-arm64.s3
+          params:
+            VERSION: ((.:version))
+
+  - name: request-signature
+    <<: *base-job
+    plan:
+      - in_parallel:
+        - get: aws-vault.git
+          passed: [smoke-tests-unsigned]
+        - get: archive-darwin-arm64.s3
+          passed: [smoke-tests-unsigned]
+          params:
+            skip_download: "true"
+      - task: request-archive-signature
+        file: aws-vault.git/ci/tasks/request-signature.yml
+        params:
+          PRODUCT_NAME: "aws-vault"
+      - put: codesign-request-id.keyval
+        no_get: true
+        inputs: [codesign]
+        params:
+          file: codesign/request.properties
+
+  - name: smoke-tests-signed
+    <<: *base-job
+    plan:
+      - in_parallel:
+        - get: aws-vault.git
+          passed: [request-signature]
+        - get: codesign-request-id.keyval
+          passed: [request-signature]
+      - load_var: version
+        file: aws-vault.git/.git/describe_ref
+        reveal: true
+      - task: fetch-signed-artifacts
+        file: aws-vault.git/ci/tasks/fetch-signed-artifacts.yml
+        params:
+          <<: *artifactory-params
+          VERSION: ((.:version))
+      - task: smoke-test-darwin
+        tags: [sonoma-tester]
+        file: aws-vault.git/ci/tasks/smoke-test-darwin.yml
+        input_mapping:
+          artifacts: signed-artifacts-darwin
+        params:
+          VERSION: ((.:version))
+
+  - name: release
+    <<: *base-job
+    disable_manual_trigger: ((is_feature))
+    plan:
+      - in_parallel:
+        - get: aws-vault.git
+          trigger: true
+          passed: [smoke-tests-signed]
+          file: aws-vault.git/.git/HEAD
+        - get: codesign-request-id.keyval
+          passed: [smoke-tests-signed]
+        - get: archive-linux.s3
+          trigger: false
+          passed: [smoke-tests-unsigned]
+      - load_var: head_commit
+        reveal: true
+      - load_var: version
+        reveal: true
+        file: aws-vault.git/.git/describe_ref
+      - task: fetch-signed-artifacts
+        file: aws-vault.git/ci/tasks/fetch-signed-artifacts.yml
+        params:
+          <<: *artifactory-params
+          VERSION: ((.:version))
+      - task: prepare-release
+        file: aws-vault.git/ci/tasks/prepare-release.yml
+        params:
+          RELEASE_NAME: ((.:version))
+          RELEASE_TAG: ((.:version))
+          RELEASE_COMMIT: ((.:head_commit))
+      - put: gh-release
+        no_get: true
+        inputs:
+          - aws-vault.git
+          - final-artifacts
+          - release-info
+        params:
+          name: release-info/name
+          tag: release-info/tag
+          commitish: release-info/commitish
+          generate_release_notes: true
+          globs:
+            - final-artifacts/*
+      - put: cogito
+        no_get: true
+        inputs: []
+        params:
+          state: success
+          sinks: [gchat]
+          chat_message: "Released aws-vault version ((.:version))"

@@ -1,0 +1,59 @@
+---
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: curlimages/curl
+
+params:
+  PRODUCT_NAME:
+  CODESIGNER_TOKEN: ((codesigner_token))
+
+inputs:
+  - name: archive-darwin-arm64.s3
+outputs:
+  - name: codesign
+
+run:
+  user: root
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      apk update && apk upgrade \
+      && apk add jq
+
+      UNSIGNED_MACOS_ARM64_URL_PREFIX=$(sed -e's|https://.*amazonaws.com/|s3://|' archive-darwin-arm64.s3/url)
+
+      DATA=$(cat <<EOF
+      {
+        "product": "$PRODUCT_NAME",
+        "reason": "New version released from Concourse CI",
+        "artifacts": [
+          {
+            "unsigned_url": "$UNSIGNED_MACOS_ARM64_URL_PREFIX",
+            "os": "macOS"
+          }
+        ]
+      }
+      EOF
+      )
+
+      # CURL SENDS A POST REQUEST.
+      if curl --fail-with-body --no-progress-meter --location \
+        -H "Authorization: Token $CODESIGNER_TOKEN" \
+        -H "Content-Type: application/json" \
+        --data "$DATA" \
+        --output response.json \
+        'https://codesigner.ci.pix4d.com/api/v1/requests/'
+      then
+        # OUTPUT THE RECEIVED REQUEST ID
+        REQUEST_ID=$(jq --raw-output --exit-status .pk < response.json)
+        echo "REQUEST_ID=$REQUEST_ID" > codesign/request.properties
+      else
+        echo "Error: $(jq --raw-output .detail < response.json)"
+        echo "Submitted data:"
+        echo $DATA | jq .
+        exit 1
+      fi
