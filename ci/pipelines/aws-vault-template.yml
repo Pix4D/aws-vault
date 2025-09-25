@@ -251,13 +251,13 @@ jobs:
         - get: aws-vault.git
           trigger: true
           passed: [smoke-tests-signed]
-          file: aws-vault.git/.git/HEAD
         - get: codesign-request-id.keyval
           passed: [smoke-tests-signed]
         - get: archive-linux.s3
           trigger: false
           passed: [smoke-tests-unsigned]
       - load_var: head_commit
+        file: aws-vault.git/.git/HEAD
         reveal: true
       - load_var: version
         reveal: true
