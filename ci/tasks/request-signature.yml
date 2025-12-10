@@ -21,8 +21,8 @@ run:
   args:
     - -ec
     - |
-      apk update && apk upgrade \
-      && apk add jq
+      apk update --no-progress
+      apk add --no-progress jq
 
       UNSIGNED_MACOS_ARM64_URL_PREFIX=$(sed -e's|https://.*amazonaws.com/|s3://|' archive-darwin-arm64.s3/url)
 
