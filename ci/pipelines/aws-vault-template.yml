@@ -156,13 +156,12 @@ jobs:
                   file: out-linux/aws-vault-*.gz
             - do:
               - task: build-darwin-arm64
-                image: aws-vault-builder.docker
-                file: aws-vault.git/ci/tasks/build.yml
+                file: aws-vault.git/ci/tasks/build-darwin.yml
                 output_mapping:
                   out: out-darwin-arm64
                 params:
                   VERSION: ((.:version))
-                  PLATFORM: darwin-arm64
+                tags: [sequoia]
               - put: archive-darwin-arm64.s3
                 no_get: true
                 inputs: [out-darwin-arm64]
