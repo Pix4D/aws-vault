@@ -1,4 +1,16 @@
-# Making a release
+# Contributing
+
+## CI tricks
+
+### Build and download for macOS
+
+    $ fly --target developers execute \
+        --config=ci/tasks/build-darwin.yml \
+        --input=aws-vault.git=. \
+        --output=out=out \
+        --tag=sequoia
+
+## Making a release
 
 The release strategy of this project is based on git tags from the master branch.
 
@@ -39,4 +51,3 @@ Steps to be performed by the Release Engineer:
 13. The master pipeline will see the merge commit, containing the tag, and will trigger a build.
 14. When the master pipeline finished running, unfreeze the master branch.
 15. Celebrate!
-
