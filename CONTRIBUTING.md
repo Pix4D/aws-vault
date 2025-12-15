@@ -1,5 +1,9 @@
 # Contributing
 
+## Making a PR
+
+Be warned that due to a GitHub limitation, a PR will always be opened against the upstream `99designs/aws-vault`. You will have to manually change the base branch in the PR page.
+
 ## CI tricks
 
 ### Build and download for macOS
@@ -39,7 +43,7 @@ Steps to be performed by the Release Engineer:
    The --no-ff flag ensures that the merge has two ancestors: master and prepare-release-vA.B.C.
    This makes the subsequent git push equivalent to clicking on the merge button in the GitHub UI.
 
-10. Run the tests. You never know...
+10. Run the tests locally. You never know...
 11. Tag the master branch
    ```
    $ git tag -a -m "Release $AWS_VAULT_NEW_TAG" $AWS_VAULT_NEW_TAG
