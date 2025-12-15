@@ -1,0 +1,40 @@
+---
+platform: darwin
+params:
+  VERSION:
+inputs:
+  - name: aws-vault.git
+outputs:
+  - name: out
+
+run:
+  path: /bin/sh
+  args:
+    - -ec
+    - |
+      : "${VERSION?The pipeline must set this parameter}"
+
+      export JOB_ROOT=$PWD
+      export GOPATH=$JOB_ROOT/go
+      PATH=$JOB_ROOT/go/bin:$JOB_ROOT:$PATH
+      GO_VERSION="1.20"
+      curl --fail --no-progress-meter --location \
+        https://go.dev/dl/go${GO_VERSION}.darwin-arm64.tar.gz | tar xzf -
+      which go
+      go version
+
+      echo
+      echo
+      echo
+      cd aws-vault.git
+      echo Building for $(uname -m -r -s)
+      LDFLAGS="-w -s -X main.Version=${VERSION}"
+      go build -ldflags="${LDFLAGS}" -v
+
+      echo
+      echo Zipping out-darwin-arm64/aws-vault-*.zip
+      zip aws-vault-${VERSION}-darwin-arm64.zip aws-vault
+      echo Copying artifact to output
+      # on macOS, Concourse does nasty things with symlinks, so the classic
+      # cp aws-vault ../out/ would NOT find the output directory out :-/
+      cp aws-vault*.zip $JOB_ROOT/out/

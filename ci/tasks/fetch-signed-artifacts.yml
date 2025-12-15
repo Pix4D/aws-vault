@@ -29,14 +29,14 @@ run:
       : "${CODESIGNER_TOKEN?The pipeline must set this parameter}"
       : "${VERSION?The pipeline must set this parameter}"
 
-      apk update && \
-      apk upgrade && \
-      apk add jq
+      apk update --no-progress
+      apk add --no-progress jq
 
       # FETCH THE CODESIGNING REQUEST DATA AND EXTRACT ARTIFACT URL
       CODESIGN_ID=$(cat codesign-request-id.keyval/keyval.properties | grep -m 1 REQUEST_ID | cut -d'=' -f2)
 
-      curl --fail --no-progress-meter \
+      echo Getting the request ID from Codesigner.
+      curl --fail-with-body --no-progress-meter \
         -H "Authorization: Token $CODESIGNER_TOKEN" \
         https://codesigner.ci.pix4d.com/api/v1/requests/$CODESIGN_ID/ \
         --output response.json
@@ -54,7 +54,7 @@ run:
         # FETCH THE DARWIN ARTIFACT DIRECTLY FROM ARTIFACTORY AND STORE IT IN THE OUTPUT DIRECTORY
         echo
         echo "Downloading $MAC_ARTIFACT_NAME from $MAC_URL"
-        curl --fail --no-progress-meter \
+        curl --fail-with-body --no-progress-meter \
           -u $ARTIFACTORY_USER:$ARTIFACTORY_PASSWORD \
           --get $MAC_URL \
           --output signed-artifacts-darwin/$MAC_ARTIFACT_NAME
