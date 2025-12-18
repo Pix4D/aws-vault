@@ -14,6 +14,12 @@ Be warned that due to a GitHub limitation, a PR will always be opened against th
         --output=out=out \
         --tag=sequoia
 
+### Download from previous master pipeline build
+
+https://downloads.ci.pix4d.com/ci-pix4d-concourse-pipeline/artifacts/aws-vault/master/
+
+Since this is pre-signature, for macOS you will need `xattr -d com.apple.quarantine /path/to/aws-vault`.
+
 ## Making a release
 
 The release strategy of this project is based on git tags from the master branch.
