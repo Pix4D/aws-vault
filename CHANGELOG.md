@@ -2,6 +2,12 @@
 
 This changelog is kept in reversed chronological order (most recent entries at the top).
 
+## v7.2.2-pix4d 2025-12-19
+
+### Security
+
+- Fix security vulnerability of github.com/dvsekhvalnov/jose2go; (https://github.com/Pix4D/aws-vault/pull/9)
+
 ## v7.2.1-pix4d 2025-12-15
 
 ### Fixes
