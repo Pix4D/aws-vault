@@ -125,7 +125,7 @@ jobs:
           file: aws-vault.git/ci/tasks/test-linux.yml
         - task: test-darwin
           file: aws-vault.git/ci/tasks/test-darwin.yml
-          tags: [sequoia]
+          tags: [tahoe]
 
   - name: build
     <<: *base-job
@@ -161,7 +161,7 @@ jobs:
                   out: out-darwin-arm64
                 params:
                   VERSION: ((.:version))
-                tags: [sequoia]
+                tags: [tahoe]
               - put: archive-darwin-arm64.s3
                 no_get: true
                 inputs: [out-darwin-arm64]
@@ -191,7 +191,7 @@ jobs:
           params:
             VERSION: ((.:version))
         - task: smoke-test-darwin
-          tags: [sonoma-tester]
+          tags: [sequoia-tester]
           file: aws-vault.git/ci/tasks/smoke-test-darwin.yml
           input_mapping:
             artifacts: archive-darwin-arm64.s3
@@ -235,7 +235,7 @@ jobs:
           <<: *artifactory-params
           VERSION: ((.:version))
       - task: smoke-test-darwin
-        tags: [sonoma-tester]
+        tags: [sequoia-tester]
         file: aws-vault.git/ci/tasks/smoke-test-darwin.yml
         input_mapping:
           artifacts: signed-artifacts-darwin
