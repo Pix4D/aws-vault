@@ -1,6 +1,6 @@
 module github.com/99designs/aws-vault/v7
 
-go 1.20
+go 1.25.0
 
 require (
 	github.com/99designs/keyring v1.2.2
@@ -35,5 +35,5 @@ require (
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 )
