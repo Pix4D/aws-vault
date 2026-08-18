@@ -1,14 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>pix4d/renovate-bot-pci"],
+  "extends": ["github>pix4d/renovate-presets"],
   "packageRules": [
     {
       "enabled": false,
       "matchPackageNames": ["*"]
     }
-  ],
-  "vulnerabilityAlerts": {
-    "enabled": true
-  },
-  "osvVulnerabilityAlerts": true
+  ]
 }
