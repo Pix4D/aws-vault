@@ -14,7 +14,7 @@ run:
 
       echo
       echo ====Installing dependencies====
-      curl --fail --no-progress-meter --location https://github.com/go-task/task/releases/download/v3.24.0/task_darwin_amd64.tar.gz | tar xzf - task
+      curl --fail --no-progress-meter --location https://github.com/go-task/task/releases/download/v3.54.0/task_darwin_arm64.tar.gz | tar xzf - task
 
       cd aws-vault.git
 
