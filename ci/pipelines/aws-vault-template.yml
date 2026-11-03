@@ -90,7 +90,7 @@ resources:
     check_every: 24h
     source:
       repository: docker.ci.pix4d.com/aws-vault-builder
-      tag: "20250820081839"
+      tag: "20261103101820"
       <<: *docker-creds
 
   - name: codesign-request-id.keyval
